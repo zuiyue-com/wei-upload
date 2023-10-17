@@ -6,6 +6,7 @@ Requires=user.slice
 Restart=always
 RestartSec=30
 TimeoutStartSec=0
+WorkingDirectory=/root/data/saas/
 ExecStart=/root/data/wei-upload/wei-upload
 ExecStop=pkill %p
 
