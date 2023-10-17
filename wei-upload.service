@@ -1,0 +1,13 @@
+[Unit]
+Description=%p
+Requires=user.slice
+
+[Service]
+Restart=always
+RestartSec=30
+TimeoutStartSec=0
+ExecStart=/root/data/wei-upload/wei-upload
+ExecStop=pkill %p
+
+[Install]
+WantedBy=multi-user.target
