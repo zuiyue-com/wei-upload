@@ -2,7 +2,12 @@
 name = "wei-upload"
 version = "0.1.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "wei upload"
+documentation = "https://github.com/zuiyue-com/wei-upload"
+homepage = "https://github.com/zuiyue-com/wei-upload"
+license = "MIT OR Apache-2.0"
 
 [dependencies]
+axum = { version = "0.6", features = ["multipart"] }
+tokio = { version = "1", features = ["full"] }
+# futures-util = "0.3.28"
