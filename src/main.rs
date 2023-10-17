@@ -2,12 +2,18 @@ use axum::{
     extract::Multipart,
     routing::post,
     Router,
+    Json,
 };
 
+use serde::Deserialize;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 
-async fn upload(mut multipart: Multipart) {
+async fn upload(mut multipart: Multipart) -> String {
+    let mut return_data = serde_json::json!({
+        "code": 200
+    }).to_string();
+
     while let Some(field) = multipart.next_field().await.unwrap() {
         let name = field.name().unwrap().to_string().replace("..","");
         let data = field.bytes().await.unwrap();
@@ -23,15 +29,80 @@ async fn upload(mut multipart: Multipart) {
         let name = format!("{}/{}", current_dir.display(), name);
         
         let mut file = File::create(name.clone()).await.unwrap();
-        file.write_all(&data).await.unwrap();
-    
-        println!("upload file `{}`", name);
+        match file.write_all(&data).await {
+            Ok(_) => {
+                return_data = serde_json::json!({
+                    "code": 200
+                }).to_string();
+            },
+            Err(_) => {
+                return_data = serde_json::json!({
+                    "code": 400,
+                    "message": "write file failed"
+                }).to_string();
+            }
+        }
+    }
+
+    return_data
+}
+
+#[derive(Deserialize)]
+struct FileRequest {
+    name: String,
+}
+
+async fn file_size(Json(req): Json<FileRequest>) -> String {
+    let name = req.name.clone();
+
+    let current_dir = std::env::current_dir().unwrap();
+    let name = format!("{}/{}", current_dir.display(), name);
+    let name = name.replace("..", "");
+
+    match get_file_size(&name) {
+        Ok(size) => serde_json::json!({
+            "code": 200,
+            "name": req.name,
+            "path": name,
+            "size": size
+        }).to_string(),
+        Err(err) => serde_json::json!({
+            "code": 400,
+            "name": req.name,
+            "path": name,
+            "message": format!("{}", err)
+        }).to_string()
+    }
+}
+
+async fn delete(Json(req): Json<FileRequest>) -> String {
+    let name = req.name.clone();
+
+    let current_dir = std::env::current_dir().unwrap();
+    let name = format!("{}/{}", current_dir.display(), name);
+    let name = name.replace("..", "");
+
+    match std::fs::remove_file(name.clone()) {
+        Ok(_) => serde_json::json!({
+            "code": 200,
+            "name": req.name,
+            "path": name
+        }).to_string(),
+        Err(err) => serde_json::json!({
+            "code": 400,
+            "name": req.name,
+            "path": name,
+            "message": format!("{}", err)
+        }).to_string()
     }
 }
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 10)]
 pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let app = Router::new().route("/upload", post(upload));
+    let app = Router::new()
+        .route("/upload", post(upload))
+        .route("/file_size", post(file_size))
+        .route("/delete", post(delete));
 
     let address = format!("0.0.0.0:8001");
     println!("Server running on {}", address);
@@ -41,4 +112,12 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap();
 
     Ok(())
+}
+
+
+use std::fs;
+
+fn get_file_size(file_path: &str) -> std::io::Result<u64> {
+    let metadata = fs::metadata(file_path)?;
+    Ok(metadata.len())
 }
