@@ -32,7 +32,8 @@ async fn upload(mut multipart: Multipart) -> String {
         match file.write_all(&data).await {
             Ok(_) => {
                 return_data = serde_json::json!({
-                    "code": 200
+                    "code": 200,
+                    "path": name,
                 }).to_string();
             },
             Err(_) => {
