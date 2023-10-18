@@ -23,7 +23,11 @@ async fn upload(mut multipart: Multipart) -> String {
         let current_dir = std::env::current_dir().unwrap();
         if let Some(parent_path) = path.parent() {
             let parent_path = format!("{}/{}", current_dir.display(), parent_path.display());
-            std::fs::create_dir_all(parent_path).unwrap();
+            std::fs::create_dir_all(parent_path.clone()).unwrap();
+            use std::os::unix::fs::PermissionsExt;
+
+            let perm = std::fs::Permissions::from_mode(0o777);
+            std::fs::set_permissions(parent_path, perm).unwrap();
         }
 
         let name = format!("{}/{}", current_dir.display(), name);
