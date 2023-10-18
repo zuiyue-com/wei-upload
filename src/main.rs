@@ -48,6 +48,29 @@ async fn upload(mut multipart: Multipart) -> String {
     return_data
 }
 
+use axum::{response::IntoResponse};
+use hyper::{Body, Response, StatusCode};
+use std::convert::Infallible;
+async fn download_file(Json(req): Json<FileRequest>) -> Result<impl IntoResponse, Infallible> {
+
+
+    match tokio::fs::read(req.name).await {
+        Ok(data) => {
+            return Ok(Response::builder()
+                .header("Content-Type", "application/octet-stream")
+                .header("Content-Disposition", "attachment; filename=\"your_file_name.ext\"")
+                .body(Body::from(data))
+                .unwrap());
+        },
+        Err(err) => {
+            return Ok(Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .body(Body::from(format!("File not found: {}", err)))
+                .unwrap());
+        }
+    }
+}
+
 #[derive(Deserialize)]
 struct FileRequest {
     name: String,
@@ -102,6 +125,7 @@ async fn delete(Json(req): Json<FileRequest>) -> String {
 pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app = Router::new()
         .route("/upload", post(upload))
+        .route("/download", post(download_file))
         .route("/file_size", post(file_size))
         .route("/delete", post(delete));
 
