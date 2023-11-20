@@ -16,7 +16,15 @@ async fn upload(mut multipart: Multipart) -> String {
 
     while let Some(field) = multipart.next_field().await.unwrap() {
         let name = field.name().unwrap().to_string().replace("..","");
-        let data = field.bytes().await.unwrap();
+        let data = match field.bytes().await {
+            Ok(data) => data,
+            Err(e) => {
+                return serde_json::json!({
+                    "code": 400,
+                    "message": format!("{:?}", e)
+                }).to_string();
+            }
+        };
 
         let path = name.clone();
         let path = std::path::Path::new(&path);
@@ -131,7 +139,8 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/upload", post(upload))
         .route("/download", post(download_file))
         .route("/file_size", post(file_size))
-        .route("/delete", post(delete));
+        .route("/delete", post(delete))
+        .layer(axum::extract::DefaultBodyLimit::max(100*1024*1024));
 
     let address = format!("0.0.0.0:8001");
     println!("Server running on {}", address);
